@@ -12,7 +12,7 @@ class CameraService{
         }
 
         final camera = cameras.first;
-        _controller = CameraController(camera, ResolutionPreset.high, enableaAudio: false);
+        _controller = CameraController(camera, ResolutionPreset.high, enableAudio: false);
 
         await _controller!.initialize();
     }
