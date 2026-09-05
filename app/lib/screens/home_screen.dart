@@ -427,7 +427,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: _previewKey,
                     children: [
                       // Prévia da câmera.
-                      if (_isInitializing)
+                      if (_isSwitchingCamera)
+                        const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 12),
+                              Text('Trocando de câmera...'),
+                            ],
+                          ),
+                        )
+                      else if (_isInitializing)
                         Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,

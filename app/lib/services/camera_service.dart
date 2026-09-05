@@ -43,35 +43,45 @@ class CameraService {
   }
 
   Future<void> _startController() async {
-    final previousController = _controller;
-
     final controller = CameraController(
       _cameras[_currentIndex],
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
     _controller = controller;
 
     await controller.initialize();
-
-    // Libera a câmera anterior somente depois que a nova está pronta,
-    // para que a troca aconteça sem "tela preta".
-    if (previousController != null) {
-      await previousController.dispose();
-    }
   }
 
   /// Alterna entre as câmeras disponíveis (frontal <-> traseira).
   Future<void> switchCamera() async {
-    if (!canSwitchCamera || _controller == null) {
+    if (!canSwitchCamera) {
       return;
+    }
+
+    final previousIndex = _currentIndex;
+    final previousController = _controller;
+
+    // Importante: descarta o controller antigo ANTES de abrir o novo.
+    // Abrir uma segunda câmera com a primeira ainda ativa deixa a prévia
+    // preta, pois a view nativa continua presa à câmera antiga.
+    _controller = null;
+
+    if (previousController != null) {
+      await previousController.dispose();
     }
 
     _currentIndex = (_currentIndex + 1) % _cameras.length;
 
-    await _startController();
+    try {
+      await _startController();
+    } catch (_) {
+      // Se a nova câmera não abrir, volta para a anterior.
+      _currentIndex = previousIndex;
+      await _startController();
+      rethrow;
+    }
   }
 
   Future<XFile> takePicture() async {
