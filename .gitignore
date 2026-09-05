@@ -2,6 +2,9 @@
 .idea/
 .vscode/
 
+# folders
+received_images/
+
 # OS files
 .DS_Store
 Thumbs.db
