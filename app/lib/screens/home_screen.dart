@@ -350,6 +350,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Mostra diálogo de confirmação ao sair do app.
+  void _showExitConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Sair do app?'),
+          content: const Text('Deseja realmente sair da aplicação?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _exitApp();
+              },
+              child: const Text('Sair'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Encerra a aplicação.
+  void _exitApp() {
+    // Força o encerramento do processo (Android/iOS).
+    exit(0);
+  }
+
   /// Abre a imagem capturada em um modal de visualização ampliada.
   void _openImageViewer() {
     if (_capturedImage == null) return;
@@ -422,6 +454,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detecção de Objetos'),
+        leading: IconButton(
+          tooltip: 'Sair do app',
+          icon: const Icon(Icons.exit_to_app),
+          onPressed: _showExitConfirmation,
+        ),
         actions: [
           IconButton(
             tooltip: 'Conexão do servidor',
