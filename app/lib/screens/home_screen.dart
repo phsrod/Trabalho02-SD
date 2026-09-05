@@ -11,6 +11,7 @@ import '../services/socket_service.dart';
 /// Chaves usadas para persistir a configuração do servidor.
 const _kPrefHost = 'server_host';
 const _kPrefPort = 'server_port';
+const _kPrefHideLastPhoto = 'hide_last_photo';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   XFile? _capturedImage;
   Uint8List? _processedImageBytes;
+
+  /// Se `true`, a miniatura da última foto não é exibida após a captura.
+  bool _hideLastPhoto = false;
 
   bool _isInitializing = true;
   bool _isProcessing = false;
@@ -73,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final savedHost = prefs.getString(_kPrefHost);
       final savedPort = prefs.getString(_kPrefPort);
+      final savedHideLastPhoto = prefs.getBool(_kPrefHideLastPhoto);
 
       if (!mounted) return;
 
@@ -83,13 +88,16 @@ class _HomeScreenState extends State<HomeScreen> {
         if (savedPort != null && savedPort.isNotEmpty) {
           _portController.text = savedPort;
         }
+        if (savedHideLastPhoto != null) {
+          _hideLastPhoto = savedHideLastPhoto;
+        }
       });
     } catch (_) {
       // Preferências são opcionais: segue com os valores padrão.
     }
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveSettings({bool? hideLastPhoto}) async {
     final host = _hostController.text.trim();
     final port = _portController.text.trim();
 
@@ -106,12 +114,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       await prefs.setString(_kPrefHost, host);
       await prefs.setString(_kPrefPort, port);
+      if (hideLastPhoto != null) {
+        _hideLastPhoto = hideLastPhoto;
+      }
+      await prefs.setBool(_kPrefHideLastPhoto, _hideLastPhoto);
 
       if (!mounted) return;
 
       Navigator.of(context).pop();
       _showMessage(
-        'Servidor salvo: $host:$port',
+        _hideLastPhoto ? 'Configurações salvas' : 'Servidor salvo: $host:$port',
         icon: Icons.check_circle,
         color: Colors.greenAccent,
       );
@@ -295,72 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.dns, size: 20),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Conexão do servidor',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(sheetContext).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _hostController,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: 'IP do servidor',
-                  hintText: 'Ex.: 192.168.0.100',
-                  prefixIcon: const Icon(Icons.computer),
-                  errorText: _hostError,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _portController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Porta',
-                  hintText: '5000',
-                  prefixIcon: const Icon(Icons.settings_ethernet),
-                  errorText: _portError,
-                ),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: _isSavingSettings ? null : _saveSettings,
-                icon: _isSavingSettings
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('Salvar'),
-                ),
-              ),
-            ],
-          ),
+        return _ServerSettingsSheet(
+          hostController: _hostController,
+          portController: _portController,
+          initialHideLastPhoto: _hideLastPhoto,
+          isSaving: _isSavingSettings,
+          onSave: (hideLastPhoto) => _saveSettings(hideLastPhoto: hideLastPhoto),
         );
       },
     );
@@ -395,6 +347,70 @@ class _HomeScreenState extends State<HomeScreen> {
           fontSize: 13,
         ),
       ),
+    );
+  }
+
+  /// Abre a imagem capturada em um modal de visualização ampliada.
+  void _openImageViewer() {
+    if (_capturedImage == null) return;
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Imagem ampliada.
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.file(
+                  File(_capturedImage!.path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Text(
+                        'Não foi possível carregar a imagem.',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Botão de fechar (top-right).
+              Positioned(
+                top: 12,
+                right: 8,
+                child: Material(
+                  color: Colors.black54,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => Navigator.of(dialogContext).pop(),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -624,33 +640,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-              // Miniatura da foto capturada.
-              if (_capturedImage != null) ...[
+              // Miniatura da foto capturada (clicável para visualizar em tamanho maior).
+              if (_capturedImage != null && !_hideLastPhoto) ...[
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 90,
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          File(_capturedImage!.path),
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Última foto capturada',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colorScheme.onSurfaceVariant,
+                InkWell(
+                  onTap: _openImageViewer,
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: 90,
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            File(_capturedImage!.path),
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Última foto capturada',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.zoom_in,
+                                size: 16,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -681,6 +712,125 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Painel de configurações do servidor, exibido como bottom sheet.
+/// Mantém seu próprio estado temporário para o switch, só persistindo
+/// ao clicar em 'Salvar'.
+class _ServerSettingsSheet extends StatefulWidget {
+  const _ServerSettingsSheet({
+    required this.hostController,
+    required this.portController,
+    required this.initialHideLastPhoto,
+    required this.isSaving,
+    required this.onSave,
+  });
+
+  final TextEditingController hostController;
+  final TextEditingController portController;
+  final bool initialHideLastPhoto;
+  final bool isSaving;
+  final Future<void> Function(bool hideLastPhoto) onSave;
+
+  @override
+  State<_ServerSettingsSheet> createState() => _ServerSettingsSheetState();
+}
+
+class _ServerSettingsSheetState extends State<_ServerSettingsSheet> {
+  late bool _hideLastPhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    _hideLastPhoto = widget.initialHideLastPhoto;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.dns, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Conexão do servidor',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: widget.hostController,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'IP do servidor',
+              hintText: 'Ex.: 192.168.0.100',
+              prefixIcon: Icon(Icons.computer),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: widget.portController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Porta',
+              hintText: '5000',
+              prefixIcon: Icon(Icons.settings_ethernet),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('Esconder a última foto capturada'),
+            subtitle: Text(
+              _hideLastPhoto
+                  ? 'Não mostra a miniatura após tirar a foto'
+                  : 'Mostra a miniatura após tirar a foto',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            value: _hideLastPhoto,
+            onChanged: (value) {
+              setState(() {
+                _hideLastPhoto = value;
+              });
+            },
+          ),
+          const SizedBox(height: 12),              FilledButton.icon(
+            onPressed: widget.isSaving ? null : () => widget.onSave(_hideLastPhoto),
+            icon: widget.isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Salvar'),
+            ),
+          ),
+        ],
       ),
     );
   }
