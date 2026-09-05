@@ -17,7 +17,7 @@ class SocketService {
     );
 
     try {
-      // Envia o tamanho da imagem em 4 bytes, big-endian.
+      // Envia o tamanho da imagem em 4 bytes, usando big-endian.
       final sizeBytes = ByteData(4)
         ..setUint32(0, imageBytes.length, Endian.big);
 
