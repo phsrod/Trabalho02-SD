@@ -3,8 +3,8 @@ import struct
 import json
 from pathlib import Path
 
-from detector import YOLODetector
-from image_utils import decode_image, save_image
+from .detector import YOLODetector
+from .image_utils import decode_image, save_image
 
 HOST = "0.0.0.0"
 PORT = 12345
@@ -51,25 +51,13 @@ def parse_headers(header_bytes: bytes) -> dict[str, str]:
 
 
 def receive_image(conn: socket.socket) -> bytes:
-    """Recebe todos os blocos de uma imagem usando o protocolo do cliente."""
-    image_parts = []
+    """Recebe uma imagem precedida pelo seu tamanho em bytes."""
+    image_size = struct.unpack("!I", receive_exactly(conn, 4))[0]
 
-    while True:
-        header_size_bytes = conn.recv(4)
-        if not header_size_bytes:
-            break
-        if len(header_size_bytes) != 4:
-            raise ConnectionError("Tamanho do cabecalho incompleto.")
+    if image_size == 0:
+        raise ValueError("Nenhuma imagem foi recebida.")
 
-        header_size = struct.unpack("!I", header_size_bytes)[0]
-        headers = parse_headers(receive_exactly(conn, header_size))
-        chunk_size = struct.unpack("!I", receive_exactly(conn, 4))[0]
-        image_parts.append(receive_exactly(conn, chunk_size))
-
-    if not image_parts:
-        raise ValueError("Nenhum bloco de imagem foi recebido.")
-
-    return b"".join(image_parts)
+    return receive_exactly(conn, image_size)
 
 
 def send_response(conn: socket.socket, objects: list[str], error: str | None = None) -> None:
@@ -104,23 +92,3 @@ def handle_client(conn: socket.socket, detector: YOLODetector) -> None:
             send_response(conn, [], str(error))
         except OSError:
             pass
-
-
-def main() -> None:
-    detector = YOLODetector(str(MODEL_PATH))
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((HOST, PORT))
-        server.listen()
-        print(f"Servidor aguardando conexoes em {HOST}:{PORT}...")
-
-        while True:
-            conn, address = server.accept()
-            with conn:
-                print(f"Cliente conectado: {address}")
-                handle_client(conn, detector)
-
-
-if __name__ == "__main__":
-    main()
