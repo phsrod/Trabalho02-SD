@@ -285,15 +285,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(
               icon ?? (isError ? Icons.error_outline : Icons.info_outline),
               color: color ??
-                  (isError ? Colors.redAccent : Colors.greenAccent),
+                  (isError ? Colors.red : Colors.green),
             ),
             const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: isError
-            ? const Color(0xFF3A1518)
-            : const Color(0xFF12312A),
+            ? const Color(0xFFFBE9E7)
+            : const Color(0xFFE8F5E9),
       ),
     );
   }
