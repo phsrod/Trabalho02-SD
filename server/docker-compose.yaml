@@ -1,0 +1,11 @@
+services:
+  detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: detector-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./received_images:/app/server/received_images
+    restart: unless-stopped
