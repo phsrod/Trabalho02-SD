@@ -112,6 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
 
+      // Valores anteriores, usados para detectar o que realmente mudou.
+      final oldHost = prefs.getString(_kPrefHost);
+      final oldPort = prefs.getString(_kPrefPort);
+      final oldHideLastPhoto = prefs.getBool(_kPrefHideLastPhoto);
+
       await prefs.setString(_kPrefHost, host);
       await prefs.setString(_kPrefPort, port);
       if (hideLastPhoto != null) {
@@ -119,11 +124,26 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       await prefs.setBool(_kPrefHideLastPhoto, _hideLastPhoto);
 
+      final serverChanged = oldHost != host || oldPort != port;
+      final hideChanged = oldHideLastPhoto != _hideLastPhoto;
+
+      // A mensagem reflete a ação do usuário, não apenas o estado do switch.
+      String message;
+      if (serverChanged) {
+        message = 'Servidor salvo: $host:$port';
+      } else if (hideChanged) {
+        message = _hideLastPhoto
+            ? 'Última foto será ocultada'
+            : 'Última foto será exibida';
+      } else {
+        message = 'Configurações salvas';
+      }
+
       if (!mounted) return;
 
       Navigator.of(context).pop();
       _showMessage(
-        _hideLastPhoto ? 'Configurações salvas' : 'Servidor salvo: $host:$port',
+        message,
         icon: Icons.check_circle,
         color: Colors.greenAccent,
       );
