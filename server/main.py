@@ -1,3 +1,4 @@
+import os
 import socket
 from pathlib import Path
 
@@ -8,6 +9,7 @@ MODEL_PATH = Path(__file__).resolve().parent / "models" / "modelo_pretreinado.pt
 
 HOST = "0.0.0.0"
 PORT = 5000
+APP_IP = os.getenv("SERVER_IP", "IP_DO_COMPUTADOR")
 
 def main() -> None:
     detector = YOLODetector(str(MODEL_PATH))
@@ -16,7 +18,10 @@ def main() -> None:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((HOST, PORT))
         server.listen()
-        print(f"Servidor aguardando conexoes em {HOST}:{PORT}...")
+        print("Servidor iniciado com sucesso!")
+        print(f"Configure o app com IP: {APP_IP}")
+        print(f"Configure o app com PORTA: {PORT}")
+        print(f"Escutando em {HOST}:{PORT}...")
 
         while True:
             conn, address = server.accept()

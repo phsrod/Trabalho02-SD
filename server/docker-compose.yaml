@@ -6,6 +6,8 @@ services:
     container_name: detector-server
     ports:
       - "5000:5000"
+    environment:
+      SERVER_IP: "192.168.1.22" # Colocar o IP do servidor (ip do seu computador)
     volumes:
-      - ./received_images:/app/server/received_images
+      - .:/app/server
     restart: unless-stopped
