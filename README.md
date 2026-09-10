@@ -160,25 +160,29 @@ Certifique-se de que a porta escolhida (ex.: 5000) está liberada no firewall do
 
 ## Capturas de tela
 
-> Adicione as imagens em `.github/screenshots/` com os nomes abaixo para que apareçam no README.
-
 ### App — tela principal
 
 Prévia da câmera, botão de captura e indicador do servidor configurado.
 
-![Tela principal do app](.github/screenshots/app.png)
+![Tela principal do app](.github/screenshots/home_principal.jpeg)
+
+### App — Painel Inferior de Configurações
+
+Bottom Sheet de Configurações
+
+![Bottom Sheet de Configurações](.github/screenshots/config.jpeg)
 
 ### Imagem capturada
 
 Miniatura da última foto tirada (clicável para visualização ampliada).
 
-![Imagem capturada](.github/screenshots/imagem_capturada.png)
+![Imagem capturada](.github/screenshots/imagem_expandida.jpeg)
 
 ### Resultado da detecção
 
 Painel com os objetos identificados pelo YOLO após o processamento no servidor.
 
-![Resultado da detecção](.github/screenshots/resultado_deteccao.png)
+![Resultado da detecção](.github/screenshots/obj_dec.jpeg)
 
 ---
 
